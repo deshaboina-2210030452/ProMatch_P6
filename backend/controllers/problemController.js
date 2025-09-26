@@ -1,6 +1,8 @@
+// controllers/problemController.js
 import Problem from "../models/Problem.js";
 import { GoogleGenAI } from "@google/genai";
 
+// Fetch all problems
 export const getProblems = async (req, res) => {
   try {
     const problems = await Problem.find();
@@ -11,7 +13,7 @@ export const getProblems = async (req, res) => {
   }
 };
 
-
+// Create a new problem with Gemini embedding
 export const createProblem = async (req, res) => {
   try {
     const { title, description, difficulty, tags } = req.body;
@@ -20,20 +22,21 @@ export const createProblem = async (req, res) => {
       return res.status(400).json({ error: "Title, description, and difficulty are required" });
     }
 
-    const ai = new GoogleGenAI({});
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
+    // Generate embedding
     const response = await ai.models.embedContent({
-        model: 'gemini-embedding-001',
-        contents: title,
+      model: "gemini-embedding-001",
+      contents: title,
     });
 
-    const embedding=response.embeddings[0]?.values||[];
+    const embedding = response.embeddings[0]?.values || [];
 
-    if (!embedding) {
+    if (!embedding.length) {
       return res.status(500).json({ error: "Failed to generate embedding" });
     }
 
-    // 🔹 Step 2: Save problem to DB
+    // Save problem to MongoDB
     const problem = new Problem({
       title,
       description,
@@ -47,6 +50,58 @@ export const createProblem = async (req, res) => {
 
   } catch (err) {
     console.error("Error creating problem:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+// Vector search using Gemini embedding and MongoDB Atlas
+export const vectorSearch = async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text) return res.status(400).json({ error: "Text is required" });
+
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+    // Generate embedding for query
+    const response = await ai.models.embedContent({
+      model: "gemini-embedding-001",
+      contents: text,
+    });
+
+    const queryEmbedding = response.embeddings[0]?.values || [];
+    console.log("Generated query embedding:", queryEmbedding.length, queryEmbedding);
+
+
+    if (!queryEmbedding.length) {
+      return res.status(500).json({ error: "Failed to generate embedding" });
+    }
+
+    // MongoDB Atlas vector search
+    const results = await Problem.aggregate([
+      {
+        $vectorSearch: {
+            index: "Vector_search",
+            queryVector: queryEmbedding,  
+            path: "embedding",
+            limit: 10 ,
+            numCandidates: 100                      
+        }
+      },
+      {
+        $project: {
+          title: 1,
+          description: 1,
+          difficulty: 1,
+          tags: 1,
+          embedding: 1,
+          score: 1
+        }
+      }
+    ]);
+
+    res.json({ results });
+  } catch (err) {
+    console.error("Vector search error:", err);
     res.status(500).json({ error: "Server error" });
   }
 };

@@ -1,5 +1,5 @@
 import express from "express";
-import { getProblems ,createProblem} from "../controllers/problemController.js";
+import { getProblems ,createProblem,vectorSearch} from "../controllers/problemController.js";
 
 const router = express.Router();
 
@@ -8,5 +8,6 @@ router.get("/", getProblems);
 
 router.post("/",createProblem);
 // router.post("/search", searchProblems);
+router.post("/search/vector", vectorSearch);
 
 export default router;
