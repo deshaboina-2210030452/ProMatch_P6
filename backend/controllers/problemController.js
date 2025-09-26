@@ -3,7 +3,10 @@ import { GoogleGenAI } from "@google/genai";
 
 export const getProblems = async (req, res) => {
   try {
+    console.log("data:",req,res);
+    
     const problems = await Problem.find();
+    console.log(problems);
     res.json(problems);
   } catch (err) {
     console.error("Error fetching problems:", err);
