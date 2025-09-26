@@ -1,8 +1,7 @@
-// controllers/problemController.js
 import Problem from "../models/Problem.js";
 import { GoogleGenAI } from "@google/genai";
 
-// Fetch all problems
+
 export const getProblems = async (req, res) => {
   try {
     console.log("data:",req,res);
@@ -16,7 +15,7 @@ export const getProblems = async (req, res) => {
   }
 };
 
-// Create a new problem with Gemini embedding
+
 export const createProblem = async (req, res) => {
   try {
     const { title, description, difficulty, tags } = req.body;
@@ -27,10 +26,9 @@ export const createProblem = async (req, res) => {
 
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-    // Generate embedding
     const response = await ai.models.embedContent({
       model: "gemini-embedding-001",
-      contents: title,
+      contents: `Title: ${title} Description: ${description}`,
     });
 
     const embedding = response.embeddings[0]?.values || [];
@@ -39,7 +37,7 @@ export const createProblem = async (req, res) => {
       return res.status(500).json({ error: "Failed to generate embedding" });
     }
 
-    // Save problem to MongoDB
+
     const problem = new Problem({
       title,
       description,
@@ -57,7 +55,7 @@ export const createProblem = async (req, res) => {
   }
 };
 
-// Vector search using Gemini embedding and MongoDB Atlas
+
 export const vectorSearch = async (req, res) => {
   try {
     const { text } = req.body;
@@ -65,7 +63,7 @@ export const vectorSearch = async (req, res) => {
 
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-    // Generate embedding for query
+    
     const response = await ai.models.embedContent({
       model: "gemini-embedding-001",
       contents: text,
@@ -79,7 +77,7 @@ export const vectorSearch = async (req, res) => {
       return res.status(500).json({ error: "Failed to generate embedding" });
     }
 
-    // MongoDB Atlas vector search
+    
     const results = await Problem.aggregate([
       {
         $vectorSearch: {

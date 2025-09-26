@@ -1,14 +1,13 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import "./search.css";
+import { FaArrowUp } from "react-icons/fa";
 
 export default function ProblemSearch() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [allData, setAllData] = useState([]);
   const [showTags, setShowTags] = useState({});
-
-  const navigate = useNavigate();
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -24,9 +23,17 @@ export default function ProblemSearch() {
     fetchData();
   }, []);
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     if (!query.trim()) {
-      setResults(allData);
+      const response = await fetch("http://localhost:5000/api/problems/search/vector", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text: query || "default" }),
+      });
+      const data = await response.json();
+      setResults(data.results || []);
       return;
     }
 
@@ -43,14 +50,31 @@ export default function ProblemSearch() {
     setShowTags((prev) => ({ ...prev, [index]: !prev[index] }));
   };
 
+  // Show/hide arrow when scrolling
+  useEffect(() => {
+    const toggleVisibility = () => {
+      if (window.scrollY > 300) {
+        setIsVisible(true);
+      } else {
+        setIsVisible(false);
+      }
+    };
+
+    window.addEventListener("scroll", toggleVisibility);
+    return () => window.removeEventListener("scroll", toggleVisibility);
+  }, []);
+
+  // Scroll to top function
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
   return (
     <div className="ps-container">
       <h1 className="ps-title">🔎 Problem Search Robot</h1>
-
-      {/* Back Button */}
-      <button className="ps-back" onClick={() => navigate(-1)}>
-        ← Back
-      </button>
 
       <div className="ps-search-bar">
         <input
@@ -61,7 +85,9 @@ export default function ProblemSearch() {
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSearch()}
         />
-        <button className="ps-button" onClick={handleSearch}>Search</button>
+        <button className="ps-button" onClick={handleSearch}>
+          Search
+        </button>
       </div>
 
       <div className="ps-results-box">
@@ -88,14 +114,18 @@ export default function ProblemSearch() {
                   <td>{index + 1}</td>
                   <td>{r.title}</td>
                   <td>{r.description}</td>
-                  <td className={`ps-diff-${r.difficulty.toLowerCase()}`}>{r.difficulty}</td>
+                  <td className={`ps-diff-${r.difficulty.toLowerCase()}`}>
+                    {r.difficulty}
+                  </td>
                   <td>
                     {Array.isArray(r.tags) && r.tags.length > 0 ? (
                       <>
                         <button className="tag-btn" onClick={() => toggleTags(index)}>
                           {showTags[index] ? "Hide Tags" : "Show Tags"}
                         </button>
-                        {showTags[index] && <div className="tag-popup">{r.tags.join(", ")}</div>}
+                        {showTags[index] && (
+                          <div className="tag-popup">{r.tags.join(", ")}</div>
+                        )}
                       </>
                     ) : (
                       <span className="no-tags">—</span>
@@ -107,6 +137,13 @@ export default function ProblemSearch() {
           </tbody>
         </table>
       </div>
+
+      {/* Scroll-to-top arrow */}
+      {isVisible && (
+        <div className="scroll-to-top" onClick={scrollToTop}>
+          <FaArrowUp />
+        </div>
+      )}
     </div>
   );
 }
