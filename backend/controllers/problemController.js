@@ -7,7 +7,6 @@ export const getProblems = async (req, res) => {
     console.log("data:",req,res);
     
     const problems = await Problem.find();
-    console.log(problems);
     res.json(problems);
   } catch (err) {
     console.error("Error fetching problems:", err);
@@ -85,7 +84,8 @@ export const vectorSearch = async (req, res) => {
             queryVector: queryEmbedding,  
             path: "embedding",
             limit: 10 ,
-            numCandidates: 100                      
+            numCandidates: 100,
+            scoreField: "score"                  
         }
       },
       {
@@ -94,10 +94,19 @@ export const vectorSearch = async (req, res) => {
           description: 1,
           difficulty: 1,
           tags: 1,
-          embedding: 1,
-          score: 1
+          score: { $meta: "vectorSearchScore" }
         }
-      }
+        
+      },
+      {
+        $match:{
+          score:{$gt:0.77}
+        }
+      },
+      {
+        $sort: { score: -1 }  // sort descending by similarity
+      },
+
     ]);
 
     res.json({ results });
